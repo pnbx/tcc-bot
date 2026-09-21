@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { escapeHtml, sendMessage } from "@/lib/tg";
+import { callTelegram, escapeHtml, sendMessage } from "@/lib/tg";
 import { timingSafeEqual } from "node:crypto";
 
 export const dynamic = "force-dynamic";
