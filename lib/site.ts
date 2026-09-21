@@ -73,4 +73,26 @@ export const site = {
       return { queued: false, error: (err as Error).message };
     }
   },
+
+  /** Is this Telegram admin in AI-admin mode? (persisted on the site) */
+  async adminMode(id: number | string): Promise<boolean> {
+    const data = await get<{ on: boolean }>("adminmode", { id: String(id) });
+    return Boolean(data?.on);
+  },
+
+  async setAdminMode(id: number | string, on: boolean): Promise<boolean | null> {
+    if (!TOKEN) return null;
+    try {
+      const res = await fetch(`${BASE}/api/bot/adminmode`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-bot-token": TOKEN },
+        cache: "no-store",
+        body: JSON.stringify({ id: String(id), on }),
+      });
+      const json = (await res.json()) as { ok: boolean; data?: { on: boolean }; error?: string };
+      return json.ok ? Boolean(json.data?.on) : null;
+    } catch {
+      return null;
+    }
+  },
 };

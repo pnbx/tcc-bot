@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chat } from "@/lib/ai";
+import { planAdminAction } from "@/lib/agent";
 import { site, type SiteStatus } from "@/lib/site";
 import { escapeHtml, sendLong, sendMessage, sendTyping, type InlineButton } from "@/lib/tg";
 
@@ -63,7 +64,8 @@ const HELP = `🤖 <b>دستیار TCC</b>
 /kick &lt;بازیکن&gt; — اخراج
 /say &lt;متن&gt; — پیام همگانی در بازی
 /post &lt;متن&gt; — ارسال به کانال
-/ask &lt;سؤال&gt; — پرسش از دستیار`;
+/ask &lt;سؤال&gt; — پرسش از دستیار
+/aiadmin — مدیر هوشمند: هر چه بگویی انجام می‌دهد (وضعیت، بن، پست در کانال)`;
 
 function fmtStatus(s: SiteStatus): string {
   const state =
@@ -222,12 +224,114 @@ async function handleText(chatId: number, userId: number | undefined, text: stri
     }
   }
 
+  if (cmd === "/aiadmin") {
+    if (!staff || !userId) return void (await sendMessage(chatId, "⛔️ این دستور فقط برای مالک/ادمین/دولوپر است.", { replyTo }));
+    if (!args || /^(on|روشن|فعال)$/i.test(args)) {
+      await site.setAdminMode(userId, true);
+      await sendMessage(
+        chatId,
+        "🧠 <b>مدیر هوشمند فعال شد</b>\n\nاز این پس هر چه بدون اسلش بنویسی، همان را انجام می‌دهم. مثلاً:\n• وضعیت سرور چطوره؟\n• ۱۰ خط آخر کنسول\n• فلانی را به دلیل تقلب بن کن\n• در کانال بنویس مسابقه‌ی فردا برگزار می‌شود\n\nبرای خروج: <code>/aiadmin off</code>",
+        { replyTo },
+      );
+      return;
+    }
+    if (/^(off|خاموش|غیرفعال)$/i.test(args)) {
+      await site.setAdminMode(userId, false);
+      await sendMessage(chatId, "🧠 حالت مدیر هوشمند خاموش شد.", { replyTo });
+      return;
+    }
+    await runAdminAI(chatId, userId, args, replyTo);
+    return;
+  }
+
   if (cmd.startsWith("/")) {
     await sendMessage(chatId, `❓ دستور ناشناخته: <code>${escapeHtml(cmd)}</code>\n\n${HELP}`, { keyboard: miniAppKeyboard(), replyTo });
     return;
   }
 
+  if (staff && userId && (await site.adminMode(userId))) {
+    await runAdminAI(chatId, userId, text, replyTo);
+    return;
+  }
   await answerWithAI(chatId, text, replyTo);
+}
+
+async function runAdminAI(chatId: number, userId: number, request: string, replyTo: number): Promise<void> {
+  await sendTyping(chatId);
+  const context = await liveContext();
+  const { action, error } = await planAdminAction(request, context);
+  if (!action) {
+    await sendMessage(chatId, "😕 نتوانستم درخواست را به عمل تبدیل کنم." + (error ? "\n<code>" + escapeHtml(error.slice(0, 160)) + "</code>" : ""), { replyTo });
+    return;
+  }
+  const fmt = (t: string) => escapeHtml(t).replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+
+  switch (action.action) {
+    case "answer":
+      await sendLong(chatId, fmt(action.text), { keyboard: miniAppKeyboard() });
+      return;
+
+    case "status": {
+      const st = await site.status();
+      await sendMessage(chatId, st ? "🔧 <b>وضعیت زنده</b>\n\n" + fmtStatus(st) : "⚠️ وضعیت در دسترس نیست.", { keyboard: miniAppKeyboard(), replyTo });
+      return;
+    }
+
+    case "console": {
+      const c = await site.console(action.limit ?? 20);
+      if (!c) return void (await sendMessage(chatId, "⚠️ کنسول در دسترس نیست.", { replyTo }));
+      const body = c.lines.map((l) => (l.level === "ERROR" ? "🔴" : l.level === "WARN" ? "🟡" : "▫️") + " <code>" + escapeHtml(l.message.slice(0, 160)) + "</code>");
+      await sendLong(chatId, "🔧 <b>کنسول</b> (" + c.lines.length + " خط آخر)\n\n" + body.join("\n"));
+      return;
+    }
+
+    case "orders": {
+      const o = await site.orders();
+      if (!o) return void (await sendMessage(chatId, "⚠️ گزارش فروش در دسترس نیست.", { replyTo }));
+      const recent = o.recent.map((r) => "• <code>" + escapeHtml(r.number) + "</code> " + r.status + " — " + escapeHtml(r.user)).join("\n");
+      await sendLong(chatId, "🔧 <b>فروش</b>\n\nمجموع: <b>" + o.revenueToman.toLocaleString("en-US") + "</b> تومان\n\n" + recent);
+      return;
+    }
+
+    case "players": {
+      const p = await site.players();
+      if (!p) return void (await sendMessage(chatId, "⚠️ در دسترس نیست.", { replyTo }));
+      const body = p.players.slice(0, 10).map((x) => "• <code>" + escapeHtml(x.username) + "</code> " + (x.tiers.length ? "— " + escapeHtml(x.tiers.join(", ")) : "— بدون تیر")).join("\n");
+      await sendMessage(chatId, "🔧 <b>بازیکنان</b>\n\n" + body, { replyTo });
+      return;
+    }
+
+    case "tiers": {
+      const t = await site.tiers();
+      if (!t) return void (await sendMessage(chatId, "⚠️ در دسترس نیست.", { replyTo }));
+      const body = t.categories.map((c) => "▫️ <b>" + escapeHtml(c.name) + "</b>\n   " + c.tiers.join(" · ")).join("\n");
+      await sendLong(chatId, "🔧 <b>حالت‌ها و تیرها</b>\n\n" + body);
+      return;
+    }
+
+    case "news": {
+      const n = await site.news();
+      if (!n || n.articles.length === 0) return void (await sendMessage(chatId, "📰 خبری نیست.", { replyTo }));
+      const body = n.articles.map((a) => '• <a href="' + SITE + "/news/" + a.slug + '">' + escapeHtml(a.title) + "</a>").join("\n");
+      await sendMessage(chatId, "🔧 <b>آخرین اخبار</b>\n\n" + body, { replyTo });
+      return;
+    }
+
+    case "command": {
+      if (!action.command) return void (await sendMessage(chatId, "⚠️ دستور خالی بود.", { replyTo }));
+      const res = await site.runCommand(action.command, "tg:" + userId);
+      await sendMessage(chatId, res?.queued ? "🔧 دستور اجرا شد:\n<code>" + escapeHtml(action.command) + "</code>\n\n" + escapeHtml(res.note ?? "") : "⚠️ اجرا نشد: " + escapeHtml(res?.error ?? "خطای نامشخص"), { replyTo });
+      return;
+    }
+
+    case "post": {
+      const channel = process.env.TELEGRAM_CHANNEL_ID;
+      if (!channel) return void (await sendMessage(chatId, "⚠️ TELEGRAM_CHANNEL_ID تنظیم نشده است.", { replyTo }));
+      await sendMessage(channel, "📢 <b>اطلاعیه‌ی TCC</b>\n\n" + escapeHtml(action.text) + "\n\n🌐 " + SITE, { preview: true });
+      await sendMessage(chatId, "🔧 در کانال منتشر شد ✅", { replyTo });
+      return;
+    }
+  }
 }
 
 async function answerWithAI(chatId: number, question: string, replyTo?: number): Promise<void> {
