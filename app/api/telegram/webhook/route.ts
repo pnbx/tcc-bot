@@ -241,7 +241,11 @@ async function answerWithAI(chatId: number, question: string, replyTo?: number):
     await sendMessage(chatId, `😕 الان نتوانستم جواب بدهم.\n<code>${escapeHtml(result.error.slice(0, 200))}</code>`, { replyTo });
     return;
   }
-  await sendLong(chatId, result.text, { keyboard: miniAppKeyboard() });
+  // The model sometimes emits angle brackets (e.g. a Persian placeholder like
+  // «<کد_شما>»), which Telegram rejects as an unsupported tag — escape first and
+  // only then re-enable **bold** as real HTML.
+  const safe = escapeHtml(result.text).replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+  await sendLong(chatId, safe, { keyboard: miniAppKeyboard() });
 }
 
 export async function POST(req: NextRequest) {
