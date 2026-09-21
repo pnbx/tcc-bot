@@ -49,6 +49,7 @@ export type Orders = {
 };
 export type News = { articles: { title: string; slug: string; excerpt: string | null; publishedAt: string | null }[] };
 export type Players = { players: { username: string; uuid: string; linked: boolean; tiers: string[] }[] };
+export type PrefixResult = { tier: "solid" | "gradient" | "animated"; label: string; miniMessage: string; plain: string; priceToman: number; productSlug: string; buyUrl: string };
 
 export const site = {
   status: () => get<SiteStatus>("status"),
@@ -58,6 +59,7 @@ export const site = {
   orders: () => get<Orders>("orders"),
   news: () => get<News>("news"),
   players: () => get<Players>("players"),
+  prefix: (q: string) => get<PrefixResult>("prefix", { q }),
   async runCommand(command: string, actor: string): Promise<{ queued: boolean; note?: string; error?: string } | null> {
     if (!TOKEN) return null;
     try {

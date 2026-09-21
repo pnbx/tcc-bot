@@ -64,6 +64,7 @@ const HELP = `🤖 <b>دستیار TCC</b>
 /kick &lt;بازیکن&gt; — اخراج
 /say &lt;متن&gt; — پیام همگانی در بازی
 /post &lt;متن&gt; — ارسال به کانال
+/prefix &lt;توضیح&gt; — طراحی پریفیکس با هوش مصنوعی
 /ask &lt;سؤال&gt; — پرسش از دستیار
 /aiadmin — مدیر هوشمند: هر چه بگویی انجام می‌دهد (وضعیت، بن، پست در کانال)`;
 
@@ -157,6 +158,28 @@ async function handleText(chatId: number, userId: number | undefined, text: stri
         .map((x) => `• <code>${escapeHtml(x.username)}</code> ${x.tiers.length ? `— ${escapeHtml(x.tiers.join(", "))}` : "— بدون تیر"}${x.linked ? " 🔗" : ""}`)
         .join("\n");
       await sendMessage(chatId, `👥 <b>بازیکنان اخیر</b>\n\n${body}`, { replyTo });
+      return;
+    }
+
+    case "/prefix": {
+      if (!args) {
+        await sendMessage(chatId, "🎨 بنویس چه پیشوندی می‌خواهی؛ مثلاً:\n<code>/prefix بنفش به صورتی، بولد</code>\n<code>/prefix رنگین‌کمانی با اسم خودم</code>", { replyTo });
+        return;
+      }
+      const d = await site.prefix(args);
+      if (!d) return void (await sendMessage(chatId, "⚠️ طراحی در دسترس نیست؛ چند لحظه بعد امتحان کن.", { replyTo }));
+      const tierName = d.tier === "solid" ? "ساده" : d.tier === "gradient" ? "گرادیانت" : "متحرک";
+      const styled = d.tier === "animated" ? "<b><i>" + escapeHtml(d.label) + "</i></b>" : "<b>" + escapeHtml(d.label) + "</b>";
+      await sendMessage(
+        chatId,
+        "🎨 <b>پیشوند پیشنهادی تو</b>\n\n" +
+          "پیشوند: " + styled + " |\n" +
+          "سطح: " + tierName + "\n" +
+          "قیمت: <b>" + d.priceToman.toLocaleString("en-US") + "</b> تومان\n\n" +
+          "<code>" + escapeHtml(d.miniMessage) + "</code>\n\n" +
+          "برای خرید و فعال‌سازی خودکار روی سرور:",
+        { replyTo, keyboard: [[{ text: "🎨 خرید و فعال‌سازی", url: d.buyUrl }], [{ text: "🎮 مینی‌اپ", web_app: { url: SITE + "/tg" } }]] },
+      );
       return;
     }
 
