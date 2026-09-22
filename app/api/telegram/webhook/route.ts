@@ -114,12 +114,61 @@ async function handleText(chatId: number, userId: number | undefined, text: stri
   const staff = isStaff(userId);
 
   switch (cmd) {
-    case "/start":
+    case "/start": {
+      // /start <code> is how a member links their site account to Telegram
+      if (args) {
+        const r = await site.linkTelegram(args, String(userId ?? ""), who);
+        if (r.ok) {
+          await sendMessage(
+            chatId,
+            `✅ حساب سایت <b>${escapeHtml(r.username ?? "")}</b> به تلگرامت وصل شد.\nاز این به بعد پایان رنک‌هایت را همین‌جا خبردار می‌شوی.`,
+            { replyTo },
+          );
+        } else {
+          await sendMessage(
+            chatId,
+            `⛔ ${escapeHtml(r.error ?? "کد معتبر نیست")}\n\nبرای کد تازه: site.tccmc.ir/connect-telegram`,
+            { replyTo },
+          );
+        }
+        return;
+      }
+      await sendMessage(
+        chatId,
+        `👋 سلام ${escapeHtml(who)}!\n\n${HELP}`,
+        { keyboard: miniAppKeyboard(), replyTo },
+      );
+      return;
+    }
+
     case "/help": {
       await sendMessage(
         chatId,
         `👋 سلام ${escapeHtml(who)}!\n\n${HELP}`,
         { keyboard: miniAppKeyboard(), replyTo },
+      );
+      return;
+    }
+
+    case "/me":
+    case "/ranks": {
+      if (!userId) return;
+      const me = await site.meByTelegram(String(userId));
+      if (!me?.linked) {
+        await sendMessage(
+          chatId,
+          "حساب سایتت به تلگرام وصل نیست.\nاز site.tccmc.ir/connect-telegram کد بگیر و اینجا بفرست:\n<code>/start کد</code>",
+          { replyTo },
+        );
+        return;
+      }
+      const ranks = (me.ranks ?? []).map((r) =>
+        `• ${escapeHtml(r.name)}${r.daysLeft != null ? ` — <b>${r.daysLeft}</b> روز مانده` : " — دائمی"}`,
+      );
+      await sendMessage(
+        chatId,
+        `👤 <b>${escapeHtml(me.username ?? "")}</b>\nاکانت بازی: ${escapeHtml(me.account?.username ?? "وصل نشده")}\n\n<b>رنک‌های فعال</b>\n${ranks.join("\n") || "—"}`,
+        { replyTo },
       );
       return;
     }

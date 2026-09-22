@@ -98,3 +98,38 @@ export const site = {
     }
   },
 };
+
+// ── Telegram ↔ site account linking ────────────────────────────────────────
+// A member starts the bot with the code shown on site.tccmc.ir/connect-telegram;
+// this is what actually binds the two accounts (the site can then send rank
+// expiry notices to that Telegram chat).
+
+export type LinkResult = { ok: boolean; username?: string; error?: string };
+export type TelegramMe = {
+  linked: boolean;
+  username?: string;
+  banned?: boolean;
+  account?: { username: string; uuid: string } | null;
+  ranks?: { name: string; rankKey: string | null; expiresAt: string | null; daysLeft: number | null }[];
+};
+
+export async function linkTelegram(code: string, telegramId: string, username?: string): Promise<LinkResult> {
+  if (!TOKEN) return { ok: false, error: "BOT_API_TOKEN تنظیم نشده" };
+  try {
+    const res = await fetch(`${BASE}/api/bot/link`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-bot-token": TOKEN },
+      cache: "no-store",
+      body: JSON.stringify({ code, telegramId, telegramUsername: username }),
+    });
+    const json = (await res.json()) as { ok: boolean; data?: { username: string }; error?: string };
+    if (!json.ok) return { ok: false, error: json.error ?? "کد پذیرفته نشد" };
+    return { ok: true, username: json.data?.username };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message };
+  }
+}
+
+export async function meByTelegram(telegramId: string): Promise<TelegramMe | null> {
+  return get<TelegramMe>("link", { telegramId });
+}
