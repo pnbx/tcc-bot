@@ -153,7 +153,7 @@ async function handleText(chatId: number, userId: number | undefined, text: stri
     case "/me":
     case "/ranks": {
       if (!userId) return;
-      const me = await site.meByTelegram(String(userId));
+      const me = await site.me(String(userId));
       if (!me?.linked) {
         await sendMessage(
           chatId,

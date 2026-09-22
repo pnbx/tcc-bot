@@ -97,6 +97,10 @@ export const site = {
       return null;
     }
   },
+
+  /** Telegram ↔ site account linking (see /api/bot/link) */
+  linkTelegram: (code: string, telegramId: string, username?: string) => linkTelegram(code, telegramId, username),
+  me: (telegramId: string) => meByTelegram(telegramId),
 };
 
 // ── Telegram ↔ site account linking ────────────────────────────────────────
