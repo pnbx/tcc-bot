@@ -1,0 +1,19 @@
+name: Feature request
+description: Something the bot should do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you'd like
+  - type: dropdown
+    id: who
+    attributes:
+      label: Who is it for
+      options: [Players, Staff, Website integration]

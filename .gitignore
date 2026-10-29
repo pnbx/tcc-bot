@@ -1,9 +1,21 @@
-node_modules
-.next
-.env
-.env*.local
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+
+# misc
+.DS_Store
+Thumbs.db
 *.tsbuildinfo
 next-env.d.ts
+*.log
 
-.vercel
+# env — NEVER commit tokens
+.env
 .env*
+!.env.example
+
+# local tooling
+.vercel

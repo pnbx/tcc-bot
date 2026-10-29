@@ -1,0 +1,28 @@
+name: Bug report
+description: A command, the webhook or the AI planner misbehaves.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Never paste a bot token, `BOT_API_TOKEN` or admin ids. Security problems go to SECURITY.md."
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Command or trigger
+      placeholder: /aiadmin ban Steve griefing
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Vercel function logs, or the bot's reply. Remove ids and tokens.
+      render: shell

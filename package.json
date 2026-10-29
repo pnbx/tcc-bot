@@ -2,7 +2,40 @@
   "name": "tcc-bot",
   "version": "1.0.0",
   "private": true,
-  "scripts": { "dev": "next dev", "build": "next build", "start": "next start" },
-  "dependencies": { "next": "15.5.25", "react": "19.1.0", "react-dom": "19.1.0" },
-  "devDependencies": { "@types/node": "^20", "@types/react": "^19", "@types/react-dom": "^19", "typescript": "^5" }
+  "description": "Telegram assistant, staff console and Mini App for the TCC Minecraft network.",
+  "keywords": [
+    "telegram-bot",
+    "minecraft",
+    "nextjs",
+    "openrouter",
+    "assistant"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pnbx/tcc-bot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pnbx/tcc-bot/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "15.5.25",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5"
+  }
 }
